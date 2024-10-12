@@ -62,7 +62,7 @@ class server {
   server& operator=(const server&) = delete;
   server& operator=(server&& other) noexcept;
 
-  int listen();
+  void listen();
   connection accept();
 
  private:

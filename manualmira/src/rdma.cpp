@@ -100,7 +100,10 @@ server& server::operator=(server&& other) noexcept {
   return *this;
 }
 
-int server::listen() { return rdma_listen(listen_id_, 0); }
+void server::listen() {
+  if (rdma_listen(listen_id_, 0))
+    throw std::runtime_error("Failed to start RDMA listening");
+}
 
 connection server::accept() {
   rdma_cm_id* conn_id;
