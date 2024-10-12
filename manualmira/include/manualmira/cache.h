@@ -21,7 +21,7 @@ struct line {
 
 template <std::size_t WayCount, std::size_t LineSize>
 struct set {
-  using line = manualmira::cache::internal::line<LineSize>;
+  using line = internal::line<LineSize>;
 
   set() { lines.resize(WayCount); }
 
@@ -36,6 +36,11 @@ template <std::size_t SetCount, std::size_t LineSize,
           std::size_t TagWidth =
               8 * sizeof(std::uintptr_t) - IndexWidth - OffsetWidth>
 struct entry {
+  static_assert(std::has_single_bit(SetCount),
+                "Cache set count should be a power of 2");
+  static_assert(std::has_single_bit(LineSize),
+                "Cache line size should be a power of 2");
+
   static entry from_ptr(void* ptr) {
     auto addr = reinterpret_cast<std::uintptr_t>(ptr);
     return {
