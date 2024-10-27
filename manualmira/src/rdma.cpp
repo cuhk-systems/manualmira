@@ -89,6 +89,8 @@ server::~server() {
 
   rdma_destroy_ep(listen_id_);
   rdma_freeaddrinfo(addr_info_);
+
+  is_inited_ = false;
 }
 
 server& server::operator=(server&& other) noexcept {
