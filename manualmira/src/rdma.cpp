@@ -3,17 +3,9 @@
 #include <cstring>
 #include <stdexcept>
 
-#include "rdma/rdma_verbs.h"
-
 namespace manualmira::rdma {
 
-connection::~connection() {
-  rdma_disconnect(id_);
-  for (const auto& mr_buf : mr_bufs_) rdma_dereg_mr(mr_buf.first);
-  rdma_destroy_ep(id_);
-}
-
-std::pair<ibv_mr*, void*> connection::make_mr(std::size_t size) {
+std::pair<ibv_mr*, void*> endpoint::make_mr(std::size_t size) {
   std::vector<std::uint8_t> buf;
   buf.reserve(size);
 
@@ -27,7 +19,7 @@ std::pair<ibv_mr*, void*> connection::make_mr(std::size_t size) {
   return {mr, ptr};
 }
 
-void connection::destroy_mr(ibv_mr* mr) {
+void endpoint::destroy_mr(ibv_mr* mr) {
   if (!mr_bufs_.contains(mr)) return;
   rdma_dereg_mr(mr);
   mr_bufs_.erase(mr);
@@ -65,16 +57,22 @@ void server::listen() {
     throw std::runtime_error("Failed to start RDMA listening");
 }
 
-connection server::get_request() {
+endpoint server::get_conn_req() {
   rdma_cm_id* conn_id;
   if (rdma_get_request(listen_id_, &conn_id))
     throw std::runtime_error("Failed to get RDMA request");
-  return connection(conn_id);
+  return endpoint(conn_id);
 }
 
-void server::accept(const connection& conn) {
-  if (rdma_accept(conn.id(), nullptr))
-    throw std::runtime_error("Failed to accept RDMA connection");
+connection server::accept(const endpoint& ep) {
+  if (rdma_accept(ep.id(), nullptr))
+    throw std::runtime_error("Failed to accept RDMA connection request");
+  return connection(ep.id());
+}
+
+void server::reject(const endpoint& ep) {
+  if (rdma_reject(ep.id(), nullptr, 0))
+    throw std::runtime_error("Failed to reject RDMA connection request");
 }
 
 addrinfo resolve(const char* addr, const char* port) {
@@ -89,7 +87,7 @@ addrinfo resolve(const char* addr, const char* port) {
   return addrinfo(addr_info);
 }
 
-connection connect(const addrinfo& addr) {
+endpoint prepare_connection(const addrinfo& addr) {
   ibv_qp_init_attr attr;
   std::memset(&attr, 0, sizeof(attr));
   attr.cap.max_send_wr = attr.cap.max_recv_wr = 1;
@@ -101,12 +99,13 @@ connection connect(const addrinfo& addr) {
   if (rdma_create_ep(&id, addr.base(), nullptr, &attr))
     throw std::runtime_error("Failed to create RDMA endpoint");
 
-  if (rdma_connect(id, nullptr)) {
-    rdma_destroy_ep(id);
-    throw std::runtime_error("Failed to connect to RDMA remote");
-  }
+  return endpoint(id);
+}
 
-  return connection(id);
+connection connect(const endpoint& ep) {
+  if (rdma_connect(ep.id(), nullptr))
+    throw std::runtime_error("RDMA connection rejected");
+  return connection(ep.id());
 }
 
 }  // namespace manualmira::rdma
