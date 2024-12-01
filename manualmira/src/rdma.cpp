@@ -107,15 +107,16 @@ void server::listen() {
     throw std::runtime_error("Failed to start RDMA listening");
 }
 
-connection server::accept() {
+connection server::get_request() {
   rdma_cm_id* conn_id;
   if (rdma_get_request(listen_id_, &conn_id))
     throw std::runtime_error("Failed to get RDMA request");
-
-  if (rdma_accept(conn_id, nullptr))
-    throw std::runtime_error("Failed to accept RDMA connection");
-
   return connection(conn_id);
+}
+
+void server::accept(const connection& conn) {
+  if (rdma_accept(conn.id(), nullptr))
+    throw std::runtime_error("Failed to accept RDMA connection");
 }
 
 connection connect(const char* addr, const char* port) {

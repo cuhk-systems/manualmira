@@ -24,7 +24,7 @@ class connection {
   connection& operator=(const connection&) = delete;
   connection& operator=(connection&& other) noexcept;
 
-  rdma_cm_id* id() { return id_; }
+  rdma_cm_id* id() const { return id_; }
 
   std::pair<ibv_mr*, void*> make_mr(std::size_t size);
 
@@ -63,7 +63,8 @@ class server {
   server& operator=(server&& other) noexcept;
 
   void listen();
-  connection accept();
+  connection get_request();
+  void accept(const connection& conn);
 
  private:
   bool is_inited_ = false;
