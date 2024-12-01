@@ -11,10 +11,26 @@
 
 namespace manualmira::rdma {
 
+class addrinfo {
+ public:
+  explicit addrinfo(rdma_addrinfo* base) : base_(base) {}
+
+  addrinfo(const addrinfo&) = delete;
+
+  ~addrinfo() { rdma_freeaddrinfo(base_); }
+
+  addrinfo& operator=(const addrinfo&) = delete;
+
+  rdma_addrinfo* base() const { return base_; }
+
+ private:
+  rdma_addrinfo* base_;
+};
+
 class connection {
  public:
   friend class server;
-  friend connection connect(const char* addr, const char* port);
+  friend connection connect(const addrinfo& addr);
 
   connection(const connection&) = delete;
 
@@ -35,18 +51,9 @@ class connection {
  protected:
   explicit connection(rdma_cm_id* id) : id_(id) {}
 
-  // For client-side connection ONLY. DO NOT use for server-side binding
-  // address, otherwise double free will occur.
-  connection(rdma_cm_id* id, rdma_addrinfo* addr_info)
-      : id_(id), addr_info_(addr_info) {}
-
  private:
   rdma_cm_id* id_ = nullptr;
   std::unordered_map<ibv_mr*, std::vector<std::uint8_t>> mr_bufs_;
-
-  // For client-side connection ONLY. DO NOT use for server-side binding
-  // address, otherwise double free will occur.
-  rdma_addrinfo* addr_info_ = nullptr;
 };
 
 class server {
@@ -68,7 +75,8 @@ class server {
   rdma_cm_id* listen_id_;
 };
 
-connection connect(const char* addr, const char* port);
+addrinfo resolve(const char* addr, const char* port);
+connection connect(const addrinfo& addr);
 
 }  // namespace manualmira::rdma
 

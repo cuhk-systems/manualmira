@@ -11,8 +11,6 @@ connection::~connection() {
   rdma_disconnect(id_);
   for (const auto& mr_buf : mr_bufs_) rdma_dereg_mr(mr_buf.first);
   rdma_destroy_ep(id_);
-
-  if (addr_info_) rdma_freeaddrinfo(addr_info_);
 }
 
 std::pair<ibv_mr*, void*> connection::make_mr(std::size_t size) {
@@ -79,7 +77,7 @@ void server::accept(const connection& conn) {
     throw std::runtime_error("Failed to accept RDMA connection");
 }
 
-connection connect(const char* addr, const char* port) {
+addrinfo resolve(const char* addr, const char* port) {
   rdma_addrinfo hints;
   std::memset(&hints, 0, sizeof(hints));
   hints.ai_port_space = RDMA_PS_TCP;
@@ -88,6 +86,10 @@ connection connect(const char* addr, const char* port) {
   if (rdma_getaddrinfo(addr, port, &hints, &addr_info))
     throw std::runtime_error("Failed to get server address information");
 
+  return addrinfo(addr_info);
+}
+
+connection connect(const addrinfo& addr) {
   ibv_qp_init_attr attr;
   std::memset(&attr, 0, sizeof(attr));
   attr.cap.max_send_wr = attr.cap.max_recv_wr = 1;
@@ -96,18 +98,15 @@ connection connect(const char* addr, const char* port) {
   attr.sq_sig_all = true;
 
   rdma_cm_id* id;
-  if (rdma_create_ep(&id, addr_info, nullptr, &attr)) {
-    rdma_freeaddrinfo(addr_info);
+  if (rdma_create_ep(&id, addr.base(), nullptr, &attr))
     throw std::runtime_error("Failed to create RDMA endpoint");
-  }
 
   if (rdma_connect(id, nullptr)) {
     rdma_destroy_ep(id);
-    rdma_freeaddrinfo(addr_info);
     throw std::runtime_error("Failed to connect to RDMA remote");
   }
 
-  return {id, addr_info};
+  return connection(id);
 }
 
 }  // namespace manualmira::rdma
