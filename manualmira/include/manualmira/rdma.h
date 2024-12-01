@@ -1,5 +1,5 @@
-#ifndef MANUALMIRA_RDMA_H_
-#define MANUALMIRA_RDMA_H_
+#ifndef MANUALMIRA_MANUALMIRA_INCLUDE_MANUALMIRA_RDMA_H_
+#define MANUALMIRA_MANUALMIRA_INCLUDE_MANUALMIRA_RDMA_H_
 
 #include <cstdint>
 #include <unordered_map>
