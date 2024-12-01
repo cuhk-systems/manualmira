@@ -17,12 +17,10 @@ class connection {
   friend connection connect(const char* addr, const char* port);
 
   connection(const connection&) = delete;
-  connection(connection&& other) noexcept;
 
   ~connection();
 
   connection& operator=(const connection&) = delete;
-  connection& operator=(connection&& other) noexcept;
 
   rdma_cm_id* id() const { return id_; }
 
@@ -54,21 +52,18 @@ class connection {
 class server {
  public:
   server(const char* addr, const char* port);
+
   server(const server&) = delete;
-  server(server&& other) noexcept;
 
   ~server();
 
   server& operator=(const server&) = delete;
-  server& operator=(server&& other) noexcept;
 
   void listen();
   connection get_request();
   void accept(const connection& conn);
 
  private:
-  bool is_inited_ = false;
-
   rdma_addrinfo* addr_info_;
   rdma_cm_id* listen_id_;
 };

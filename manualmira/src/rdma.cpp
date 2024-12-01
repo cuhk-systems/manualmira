@@ -7,30 +7,12 @@
 
 namespace manualmira::rdma {
 
-connection::connection(connection&& other) noexcept {
-  std::swap(id_, other.id_);
-  std::swap(mr_bufs_, other.mr_bufs_);
-
-  std::swap(addr_info_, other.addr_info_);
-}
-
 connection::~connection() {
-  if (id_) {
-    rdma_disconnect(id_);
-    for (const auto& mr_buf : mr_bufs_) rdma_dereg_mr(mr_buf.first);
-    rdma_destroy_ep(id_);
-  }
+  rdma_disconnect(id_);
+  for (const auto& mr_buf : mr_bufs_) rdma_dereg_mr(mr_buf.first);
+  rdma_destroy_ep(id_);
 
   if (addr_info_) rdma_freeaddrinfo(addr_info_);
-}
-
-connection& connection::operator=(connection&& other) noexcept {
-  std::swap(id_, other.id_);
-  std::swap(mr_bufs_, other.mr_bufs_);
-
-  std::swap(addr_info_, other.addr_info_);
-
-  return *this;
 }
 
 std::pair<ibv_mr*, void*> connection::make_mr(std::size_t size) {
@@ -73,33 +55,11 @@ server::server(const char* addr, const char* port) {
     rdma_freeaddrinfo(addr_info_);
     throw std::runtime_error("Failed to create RDMA endpoint");
   }
-
-  is_inited_ = true;
-}
-
-server::server(server&& other) noexcept {
-  std::swap(is_inited_, other.is_inited_);
-
-  std::swap(addr_info_, other.addr_info_);
-  std::swap(listen_id_, other.listen_id_);
 }
 
 server::~server() {
-  if (!is_inited_) return;
-
   rdma_destroy_ep(listen_id_);
   rdma_freeaddrinfo(addr_info_);
-
-  is_inited_ = false;
-}
-
-server& server::operator=(server&& other) noexcept {
-  std::swap(is_inited_, other.is_inited_);
-
-  std::swap(addr_info_, other.addr_info_);
-  std::swap(listen_id_, other.listen_id_);
-
-  return *this;
 }
 
 void server::listen() {
